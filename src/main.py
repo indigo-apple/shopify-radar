@@ -224,8 +224,7 @@ async def main():
             "include_sitemap": bool(inp.get("includeSitemap", True)),
             "page_delay": float(inp.get("pageDelaySec", 1.0)),
             "timeout": int(inp.get("requestTimeoutSec", 45)),
-            "agent_profile": (inp.get("agentProfileUrl") or "").strip()
-            or ucp.DEFAULT_AGENT_PROFILE,
+            "agent_profile": (inp.get("agentProfileUrl") or "").strip() or None,
         }
         if opts["only_changes"] and not opts["detect_changes"]:
             Actor.log.warning("onlyChanges needs detectChanges — enabling it")

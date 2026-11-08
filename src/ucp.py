@@ -29,10 +29,16 @@ import urllib.request
 UA = "shopify-radar/1.0 (UCP agent; +https://github.com/indigo-apple/shopify-radar)"
 
 # Publicly hosted agent profile. Required by the protocol on every tools/call.
-# Override with the ``agentProfileUrl`` input if you host your own copy.
-DEFAULT_AGENT_PROFILE = (
-    "https://raw.githubusercontent.com/indigo-apple/shopify-radar/main/"
-    "ucp-agent-profile.json"
+#
+# Hosting matters: the store fetches this URL and rejects anything it does not
+# read as JSON. ``raw.githubusercontent.com`` serves ``.json`` as ``text/plain``
+# and is rejected with ``profile_malformed: Invalid content type`` — so the
+# profile is served through a CDN that sets ``application/json``.
+# The list is ordered: the first entry is used, later ones are fallbacks if a
+# CDN is unreachable from the store's side.
+DEFAULT_AGENT_PROFILES = (
+    "https://cdn.jsdelivr.net/gh/indigo-apple/shopify-radar@main/ucp-agent-profile.json",
+    "https://raw.githack.com/indigo-apple/shopify-radar/main/ucp-agent-profile.json",
 )
 
 
@@ -161,7 +167,10 @@ class UCPClient:
     def __init__(self, domain, agent_profile=None):
         self.domain = normalize_domain(domain)
         self.endpoint, self.shop_profile_url, self.version = discover(self.domain)
-        self.agent_profile = agent_profile or DEFAULT_AGENT_PROFILE
+        self.agent_profiles = (
+            [agent_profile] if agent_profile else list(DEFAULT_AGENT_PROFILES)
+        )
+        self.agent_profile = self.agent_profiles[0]
         self._id = 0
 
     def _rpc(self, method, params=None):
@@ -196,6 +205,28 @@ class UCPClient:
             raise UCPError(f"{name} isError: {text[:300]}")
         return res.get("structuredContent") or {}
 
+    def _search_with_fallback(self, args):
+        """Run one search page, rotating to a backup profile on profile errors.
+
+        Stores fetch the referenced profile themselves, so a CDN that is
+        unreachable *from the store's network* surfaces as a profile error even
+        though the URL works fine from ours. Trying the next mirror is cheaper
+        than failing the whole store.
+        """
+        last = None
+        for prof in self.agent_profiles:
+            args["meta"] = {"ucp-agent": {"profile": prof}}
+            try:
+                sc = self.call("search_catalog", args)
+                self.agent_profile = prof
+                return sc
+            except UCPError as e:
+                msg = str(e)
+                if "agent profile" not in msg and "profile_" not in msg:
+                    raise
+                last = e
+        raise last
+
     def search_catalog(self, query="", max_products=250, max_pages=50, log=None,
                        page_delay=1.0):
         """Page through the catalog. Returns a list of raw UCP product dicts.
@@ -214,7 +245,7 @@ class UCPClient:
             }
             if cursor:
                 args["catalog"]["pagination"] = {"cursor": cursor}
-            sc = self.call("search_catalog", args)
+            sc = self._search_with_fallback(args)
             products = sc.get("products") or []
             items.extend(products)
             if log:
