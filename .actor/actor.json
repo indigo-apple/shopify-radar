@@ -15,5 +15,5 @@
     "dataset": "./dataset_schema.json"
   },
   "$schema": "https://apify.com/schemas/v1/actor.json",
-  "outputSchema": "./dataset_schema.json"
+  "outputSchema": "./output_schema.json"
 }

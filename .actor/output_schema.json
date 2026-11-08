@@ -1,0 +1,19 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Shopify Store Radar output",
+  "description": "The scan results — one dataset of products with price, stock and change info, plus a per-run summary of what each store returned or why it failed.",
+  "properties": {
+    "products": {
+      "title": "Products",
+      "type": "string",
+      "description": "One item per product: price, compare-at price, discount %, variant-level stock and the change since the previous run.",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "summary": {
+      "title": "Run summary",
+      "type": "string",
+      "description": "Per-store product counts, change counts and failure reasons (non-UCP store, blocked IP, throttled).",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY"
+    }
+  }
+}
