@@ -165,6 +165,12 @@ async def scan_store(domain, opts):
 
         if items:
             await Actor.push_data(items)
+            # Bill per returned product. Never let a charging problem kill a run
+            # that already produced data — log and carry on.
+            try:
+                await Actor.charge(event_name="product", count=len(items))
+            except Exception as e:  # noqa: BLE001
+                Actor.log.warning(f"[{domain}] could not charge for {len(items)} rows: {e}")
 
         res.update(ok=True, products=len(rows), events=len(events),
                    elapsedSec=round(time.time() - t0, 1))

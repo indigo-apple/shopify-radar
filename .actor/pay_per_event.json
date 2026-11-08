@@ -1,0 +1,7 @@
+{
+  "product": {
+    "eventTitle": "Product",
+    "eventDescription": "One product returned in the dataset (price, discount, variant-level stock, change vs previous run).",
+    "eventPriceUsd": 0.002
+  }
+}
