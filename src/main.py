@@ -36,9 +36,10 @@ async def scan_store(domain, opts):
         # consistent across pages instead of hopping exit IPs mid-scan.
         proxy_url = None
         if opts.get("proxy_configuration") is not None:
-            proxy_url = await opts["proxy_configuration"].new_url(
-                session_id=f"shopify-radar-{domain}"
-            )
+            # Session ids must match ^[\w._~]+$, so hyphens in a domain would
+            # be rejected — normalize before use.
+            session = "shopifyRadar_" + domain.replace("-", "_")
+            proxy_url = await opts["proxy_configuration"].new_url(session_id=session)
 
         client = ucp.UCPClient(domain, agent_profile=opts["agent_profile"],
                                proxy_url=proxy_url)
