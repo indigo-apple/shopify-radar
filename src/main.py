@@ -32,8 +32,18 @@ async def scan_store(domain, opts):
     res = {"store": domain, "ok": False, "products": 0, "events": 0,
            "elapsedSec": 0.0, "error": None, "ucpEndpoint": None}
     try:
-        client = ucp.UCPClient(domain, agent_profile=opts["agent_profile"])
+        # A sticky session per domain keeps the store's rate-limit bucket
+        # consistent across pages instead of hopping exit IPs mid-scan.
+        proxy_url = None
+        if opts.get("proxy_configuration") is not None:
+            proxy_url = await opts["proxy_configuration"].new_url(
+                session_id=f"shopify-radar-{domain}"
+            )
+
+        client = ucp.UCPClient(domain, agent_profile=opts["agent_profile"],
+                               proxy_url=proxy_url)
         res["ucpEndpoint"] = client.endpoint
+        res["proxied"] = bool(proxy_url)
 
         products = await asyncio.to_thread(
             client.search_catalog,
@@ -56,7 +66,8 @@ async def scan_store(domain, opts):
 
         if opts["include_sitemap"]:
             mods = await asyncio.to_thread(
-                sitemap.fetch_lastmod, domain, 5, opts["timeout"]
+                sitemap.fetch_lastmod, domain, 5, opts["timeout"],
+                ucp.make_opener(proxy_url)
             )
             for r in rows:
                 r["sitemap_updated_at"] = mods.get(r.get("handle"))
@@ -232,6 +243,17 @@ async def main():
 
         kv = await Actor.open_key_value_store(name=bl.BASELINE_STORE)
         opts["baseline"] = kv
+
+        # None when the user left proxy off — datacenter IPs already reach ~83%
+        # of stores in testing; a proxy is for the ones that block them.
+        # Note: passing None to create_proxy_configuration would *enable* Apify
+        # Proxy with SDK defaults, so we have to decide explicitly.
+        proxy_input = inp.get("proxyConfiguration") or {}
+        wants_proxy = bool(proxy_input.get("useApifyProxy") or proxy_input.get("proxyUrls"))
+        opts["proxy_configuration"] = (
+            await Actor.create_proxy_configuration(actor_proxy_input=proxy_input)
+            if wants_proxy else None
+        )
 
         Actor.log.info(
             f"Scanning {len(stores)} store(s): max {opts['max_products']} products each, "

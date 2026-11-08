@@ -67,6 +67,15 @@
       "minimum": 10,
       "maximum": 180
     },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Most Shopify stores answer fine from datacenter IPs (5 of 6 tested). A minority block them and return `403` — for those, enable Apify Proxy (residential works best). Leave off to keep runs free.",
+      "editor": "proxy",
+      "default": {
+        "useApifyProxy": false
+      }
+    },
     "agentProfileUrl": {
       "title": "Agent profile URL (advanced)",
       "type": "string",

@@ -88,6 +88,7 @@ UCP is rolling out across Shopify. Most large stores already publish it. A store
 - **No publish date.** UCP does not expose `published_at`. `sitemapUpdatedAt` is the closest signal, and it changes on *any* edit, so treat it as "recently modified", not "new product". True new-product detection comes from comparing snapshots over time — that is what `changeType: "new"` does.
 - **Stock is a boolean per variant**, not a quantity. Shopify does not expose exact on-hand counts publicly.
 - **Prices are variant price ranges**, not per-market pricing. Currency comes from the store's default market.
+- **A minority of stores block datacenter IPs.** Measured from Apify's default IPs: 5 of 6 tested stores answered, 1 (`hexclad.com`) returned `403`. Those are reported in `storesFailed` with an explicit message; enable `proxyConfiguration` to get through them.
 
 ## Notes for developers
 

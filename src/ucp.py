@@ -70,6 +70,21 @@ def normalize_domain(raw):
     return d
 
 
+def make_opener(proxy_url=None):
+    """urllib opener that routes through ``proxy_url`` (http://user:pass@host:port)."""
+    if not proxy_url:
+        return None
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url})
+    )
+
+
+def _open(req, timeout, opener=None):
+    if opener is not None:
+        return opener.open(req, timeout=timeout)
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
 def _retry_after(e, detail):
     """Pull the cooldown out of a 429, which Shopify reports inconsistently."""
     hdr = e.headers.get("Retry-After") if e.headers else None
@@ -86,7 +101,7 @@ def _retry_after(e, detail):
     return None
 
 
-def _post(url, payload, timeout=90, retries=2):
+def _post(url, payload, timeout=90, retries=2, opener=None):
     body = json.dumps(payload).encode()
     headers = {
         "Content-Type": "application/json",
@@ -97,7 +112,7 @@ def _post(url, payload, timeout=90, retries=2):
     for attempt in range(retries):
         req = urllib.request.Request(url, data=body, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with _open(req, timeout, opener) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             detail = ""
@@ -128,23 +143,28 @@ def _post(url, payload, timeout=90, retries=2):
     raise UCPError(f"POST {url} failed after {retries} attempts: {last}")
 
 
-def _get_json(url, timeout=45):
+def _get_json(url, timeout=45, opener=None):
     req = urllib.request.Request(
         url, headers={"User-Agent": UA, "Accept": "application/json"}
     )
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _open(req, timeout, opener) as r:
         return json.loads(r.read())
 
 
-def discover(domain):
+def discover(domain, opener=None):
     """Return ``(mcp_endpoint, profile_url, ucp_version)``. Raises NotUCP."""
     domain = normalize_domain(domain)
     profile_url = f"https://{domain}/.well-known/ucp"
     try:
-        prof = _get_json(profile_url)
+        prof = _get_json(profile_url, opener=opener)
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             raise NotUCP(f"{domain}: no UCP profile (HTTP {e.code})") from e
+        if e.code in (401, 403, 429):
+            raise NotUCP(
+                f"{domain}: blocked the request (HTTP {e.code}) — the store "
+                f"rejects this IP; enable a proxy for it"
+            ) from e
         raise NotUCP(f"{domain}: UCP profile unavailable (HTTP {e.code})") from e
     except Exception as e:  # noqa: BLE001
         raise NotUCP(f"{domain}: UCP profile unreachable ({type(e).__name__})") from e
@@ -164,9 +184,13 @@ def discover(domain):
 
 
 class UCPClient:
-    def __init__(self, domain, agent_profile=None):
+    def __init__(self, domain, agent_profile=None, proxy_url=None):
         self.domain = normalize_domain(domain)
-        self.endpoint, self.shop_profile_url, self.version = discover(self.domain)
+        self.proxy_url = proxy_url
+        self._opener = make_opener(proxy_url)
+        self.endpoint, self.shop_profile_url, self.version = discover(
+            self.domain, opener=self._opener
+        )
         self.agent_profiles = (
             [agent_profile] if agent_profile else list(DEFAULT_AGENT_PROFILES)
         )
@@ -178,7 +202,7 @@ class UCPClient:
         msg = {"jsonrpc": "2.0", "id": self._id, "method": method}
         if params is not None:
             msg["params"] = params
-        out = _post(self.endpoint, msg)
+        out = _post(self.endpoint, msg, opener=self._opener)
         if "error" in out:
             raise UCPError(
                 f"{method} failed: {json.dumps(out['error'], ensure_ascii=False)[:300]}"

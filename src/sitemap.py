@@ -11,13 +11,16 @@ import urllib.request
 UA = "Mozilla/5.0 (compatible; shopify-radar/1.0)"
 
 
-def _get(url, timeout=30):
+def _get(url, timeout=30, opener=None):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
+    if opener is not None:
+        with opener.open(req, timeout=timeout) as r:
+            return r.read().decode("utf-8", "ignore")
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read().decode("utf-8", "ignore")
 
 
-def fetch_lastmod(domain, max_submaps=5, timeout=30):
+def fetch_lastmod(domain, max_submaps=5, timeout=30, opener=None):
     """Return ``{handle: lastmod}`` for products listed in the sitemap index.
 
     Never raises: stores without a sitemap, or with an unusual one, simply get
@@ -25,7 +28,7 @@ def fetch_lastmod(domain, max_submaps=5, timeout=30):
     """
     out = {}
     try:
-        idx = _get(f"https://{domain}/sitemap.xml", timeout=timeout)
+        idx = _get(f"https://{domain}/sitemap.xml", timeout=timeout, opener=opener)
     except Exception:  # noqa: BLE001
         return out
 
@@ -36,7 +39,7 @@ def fetch_lastmod(domain, max_submaps=5, timeout=30):
     ]
     for sm in subs[:max_submaps]:
         try:
-            xml = _get(sm, timeout=timeout)
+            xml = _get(sm, timeout=timeout, opener=opener)
         except Exception:  # noqa: BLE001
             continue
         for block in re.findall(r"<url>(.*?)</url>", xml, re.S):
