@@ -1,0 +1,81 @@
+{
+  "actorSpecification": 1,
+  "name": "shopify-store-radar",
+  "title": "Shopify Store Radar — Products, Prices & Stock Changes",
+  "description": "Track any Shopify store: full product catalog with price, compare-at price, discount %, variant-level stock, and the changes since last run (new products, delisted, price up/down, sold out, back in stock). Reads Shopify's official UCP agent endpoint instead of scraping, so it does not get rate limited, and it sees real stock levels that /products.json hides. For competitor monitoring, assortment research, restock alerts and discount hunting.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "meta": {
+    "templateId": "python-start"
+  },
+  "dockerfile": "../Dockerfile",
+  "input": "./INPUT_SCHEMA.json",
+  "readme": "../README.md",
+  "storages": {
+    "dataset": {
+      "actorSpecification": 1,
+      "views": {
+        "overview": {
+          "title": "Products",
+          "transformation": {
+            "fields": [
+              "store",
+              "title",
+              "priceMin",
+              "compareAtPrice",
+              "discountPct",
+              "currency",
+              "available",
+              "variantCount",
+              "changeType",
+              "previousPrice",
+              "productType",
+              "vendor",
+              "sitemapUpdatedAt",
+              "url"
+            ]
+          },
+          "display": {
+            "component": "table",
+            "properties": {
+              "title": { "label": "Product" },
+              "store": { "label": "Store" },
+              "priceMin": { "label": "Price" },
+              "compareAtPrice": { "label": "Was" },
+              "discountPct": { "label": "Off %" },
+              "available": { "label": "In stock" },
+              "changeType": { "label": "Change" },
+              "previousPrice": { "label": "Prev price" },
+              "productType": { "label": "Type" }
+            }
+          }
+        },
+        "changes": {
+          "title": "Changes only",
+          "transformation": {
+            "fields": [
+              "store",
+              "changeType",
+              "title",
+              "previousPrice",
+              "priceMin",
+              "changePct",
+              "available",
+              "url"
+            ]
+          },
+          "display": {
+            "component": "table",
+            "properties": {
+              "changeType": { "label": "Change" },
+              "title": { "label": "Product" },
+              "previousPrice": { "label": "From" },
+              "priceMin": { "label": "To" },
+              "changePct": { "label": "%" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

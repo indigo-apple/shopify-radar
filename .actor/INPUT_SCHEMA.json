@@ -1,0 +1,81 @@
+{
+  "title": "Shopify Store Radar",
+  "description": "Enter Shopify store domains. Get back every product with price, discount, stock and — from the second run on — exactly what changed since last time.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "stores": {
+      "title": "Shopify store domains",
+      "type": "array",
+      "description": "One domain per entry, e.g. `allbirds.com`, `gymshark.com`, `fashionnova.com`. Full URLs work too — they get normalized. Up to 50 stores per run.",
+      "editor": "stringList",
+      "prefill": [
+        "allbirds.com",
+        "fashionnova.com"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 50
+    },
+    "maxProductsPerStore": {
+      "title": "Max products per store",
+      "type": "integer",
+      "description": "Stop after this many products for each store. One product = one result item. Set 0 to take the whole catalog.",
+      "default": 250,
+      "minimum": 0,
+      "maximum": 5000
+    },
+    "detectChanges": {
+      "title": "Detect changes since last run",
+      "type": "boolean",
+      "description": "Compare against the snapshot stored by the previous run of this actor and tag each product with `changeType`: new / delisted / price_drop / price_rise / sold_out / back_in_stock. The snapshot is kept per store between runs. Turn this off for a plain catalog dump.",
+      "default": true
+    },
+    "onlyChanges": {
+      "title": "Output only changed products",
+      "type": "boolean",
+      "description": "Return only the products that actually changed. Much cheaper if you run this on a daily schedule — you pay per returned item. The very first run always returns everything to establish the baseline.",
+      "default": false
+    },
+    "includeDelisted": {
+      "title": "Report delisted products",
+      "type": "boolean",
+      "description": "When a product seen in the previous run is gone from the catalog, emit a row with `changeType: \"delisted\"` (title and last known price kept, current price fields empty). Turn off if you only care about products that still exist.",
+      "default": true
+    },
+    "includeSitemap": {
+      "title": "Include sitemap last-modified dates",
+      "type": "boolean",
+      "description": "UCP does not expose a publish date, so `sitemapUpdatedAt` is taken from the store's product sitemap. It tells you when the merchant last touched a product page — a useful proxy for 'recently changed', but not proof of a new listing. Adds a few seconds per store.",
+      "default": true
+    },
+    "pageDelaySec": {
+      "title": "Delay between pages (seconds)",
+      "type": "number",
+      "description": "Gap between catalog page requests. Stores throttle bursty paging — 1s is safe for normal stores; very large catalogs may need 2–3s to avoid a long cool-down.",
+      "default": 1,
+      "minimum": 0,
+      "maximum": 10
+    },
+    "requestTimeoutSec": {
+      "title": "Request timeout (seconds)",
+      "type": "integer",
+      "description": "Per-request timeout when talking to the store. Large catalogs on slow stores may need more.",
+      "default": 45,
+      "minimum": 10,
+      "maximum": 180
+    },
+    "agentProfileUrl": {
+      "title": "Agent profile URL (advanced)",
+      "type": "string",
+      "description": "UCP requires every request to reference a public agent profile document that the store fetches and validates. The actor defaults to its own hosted profile — only change this if you host your own copy (the document must contain `ucp.version`, `ucp.services`, `ucp.capabilities` and `ucp.payment_handlers`).",
+      "editor": "textfield",
+      "nullable": true
+    }
+  },
+  "required": [
+    "stores"
+  ]
+}
