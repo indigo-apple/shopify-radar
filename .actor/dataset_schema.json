@@ -1,0 +1,182 @@
+{
+  "actorSpecification": 1,
+  "title": "Shopify products",
+  "description": "One item per product, with price, discount, variant-level stock and the change since the previous run.",
+  "fields": {
+    "type": "object",
+    "properties": {
+      "store": {
+        "type": "string",
+        "description": "Store domain as requested, e.g. allbirds.com",
+        "examples": ["allbirds.com"]
+      },
+      "shopifyShop": {
+        "type": "string",
+        "description": "The underlying myshopify.com shop hostname that served the catalog"
+      },
+      "productId": {
+        "type": "string",
+        "description": "Shopify product id (numeric part of the gid)"
+      },
+      "handle": {
+        "type": "string",
+        "description": "URL handle, e.g. wool-runner"
+      },
+      "title": { "type": "string" },
+      "url": {
+        "type": "string",
+        "description": "Product page URL on the store domain"
+      },
+      "priceMin": {
+        "type": ["number", "null"],
+        "description": "Lowest variant price in major units (e.g. 110.0 for $110.00)"
+      },
+      "priceMax": {
+        "type": ["number", "null"],
+        "description": "Highest variant price in major units"
+      },
+      "compareAtPrice": {
+        "type": ["number", "null"],
+        "description": "Strike-through 'was' price; null when the product is not discounted"
+      },
+      "discountPct": {
+        "type": ["number", "null"],
+        "description": "Effective discount percentage derived from compareAtPrice"
+      },
+      "currency": {
+        "type": ["string", "null"],
+        "description": "ISO currency code from the store's default market"
+      },
+      "available": {
+        "type": "boolean",
+        "description": "True when at least one variant is in stock"
+      },
+      "variantCount": { "type": ["integer", "null"] },
+      "variants": {
+        "type": ["array", "null"],
+        "description": "Per-variant detail: SKU, title, price and availability",
+        "items": {
+          "type": "object",
+          "properties": {
+            "sku": { "type": ["string", "null"] },
+            "title": { "type": ["string", "null"] },
+            "price": { "type": ["number", "null"] },
+            "available": { "type": ["boolean", "null"] }
+          }
+        }
+      },
+      "vendor": { "type": ["string", "null"] },
+      "productType": {
+        "type": ["string", "null"],
+        "description": "First collection title, or the taxonomy category when no collection exists"
+      },
+      "tags": {
+        "type": ["string", "null"],
+        "description": "Comma-separated tag list"
+      },
+      "imageUrl": { "type": ["string", "null"] },
+      "sitemapUpdatedAt": {
+        "type": ["string", "null"],
+        "description": "Last modification date from the product sitemap. Changes on any edit, so it means 'recently modified', not 'newly published'."
+      },
+      "changeType": {
+        "type": ["string", "null"],
+        "description": "What changed since the previous run of this actor for this store. null means unchanged (or change detection was off).",
+        "enum": [
+          "new",
+          "delisted",
+          "price_drop",
+          "price_rise",
+          "sold_out",
+          "back_in_stock",
+          null
+        ]
+      },
+      "previousPrice": {
+        "type": ["number", "null"],
+        "description": "Price seen in the previous run, for price_drop / price_rise"
+      },
+      "changePct": {
+        "type": ["number", "null"],
+        "description": "Signed percentage change of priceMin, for price_drop / price_rise"
+      },
+      "firstSeenAt": {
+        "type": "string",
+        "description": "ISO timestamp of the first run that saw this product"
+      },
+      "lastSeenAt": {
+        "type": "string",
+        "description": "ISO timestamp of the run that produced this item"
+      },
+      "baselineAvailable": {
+        "type": "boolean",
+        "description": "True when a previous snapshot existed, i.e. changeType is meaningful"
+      }
+    },
+    "required": ["store", "title", "changeType"]
+  },
+  "views": {
+    "overview": {
+      "title": "Products",
+      "description": "Full catalog with prices and stock",
+      "transformation": {
+        "fields": [
+          "store",
+          "title",
+          "priceMin",
+          "compareAtPrice",
+          "discountPct",
+          "currency",
+          "available",
+          "variantCount",
+          "changeType",
+          "previousPrice",
+          "productType",
+          "vendor",
+          "sitemapUpdatedAt",
+          "url"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "title": { "label": "Product" },
+          "store": { "label": "Store" },
+          "priceMin": { "label": "Price" },
+          "compareAtPrice": { "label": "Was" },
+          "discountPct": { "label": "Off %" },
+          "available": { "label": "In stock" },
+          "changeType": { "label": "Change" },
+          "previousPrice": { "label": "Prev price" },
+          "productType": { "label": "Type" }
+        }
+      }
+    },
+    "changes": {
+      "title": "Changes only",
+      "description": "Filter to rows where changeType is set",
+      "transformation": {
+        "fields": [
+          "store",
+          "changeType",
+          "title",
+          "previousPrice",
+          "priceMin",
+          "changePct",
+          "available",
+          "url"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "changeType": { "label": "Change" },
+          "title": { "label": "Product" },
+          "previousPrice": { "label": "From" },
+          "priceMin": { "label": "To" },
+          "changePct": { "label": "%" }
+        }
+      }
+    }
+  }
+}
